@@ -50,4 +50,4 @@ jobs:
         restore-keys: cljdeps-
 
     - name: Build snapshot
-      run: clj -T:build ci
+      run: clojure -T:build ci
