@@ -3,15 +3,51 @@ name: Clojure CI
 on:
   push:
     branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
-
+    
 jobs:
   build:
 
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v3
-    - name: build
+    - name: Checkout 
+      uses: actions/checkout@v3
+      
+    - name: Prepare java 
+      uses: actions/setup-java@v3
+      with:
+        distribution: 'zulu' 
+        java-version: '17'
+        
+    - name: Install clojure tools
+      uses: DeLaGuardo/setup-clojure@9.5
+      with:
+          # Install just one or all simultaneously
+          # The value must indicate a particular version of the tool, or use 'latest'
+          # to always provision the latest version
+          cli: latest            # Clojure CLI based on tools.deps
+          #lein: 2.9.1                  # Leiningen
+          #boot: 2.8.3                  # Boot.clj
+          bb: latest                    # Babashka
+          clj-kondo: latest        # Clj-kondo
+          cljstyle: latest             # cljstyle
+          #cmd-exe-workaround: 'latest' # Replaces `clojure` with `deps.clj` on Windows
+          zprint: latest                # zprint
+          
+      # Optional step:
+    - name: Cache clojure dependencies
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.m2/repository
+          ~/.gitlibs
+          ~/.deps.clj
+        # List all files containing dependencies:
+        key: cljdeps-${{ hashFiles('deps.edn') }}
+        # key: cljdeps-${{ hashFiles('deps.edn', 'bb.edn') }}
+        # key: cljdeps-${{ hashFiles('project.clj') }}
+        # key: cljdeps-${{ hashFiles('build.boot') }}
+        restore-keys: cljdeps-
+
+    - name: Build snapshot
       run: clj -T:build ci
