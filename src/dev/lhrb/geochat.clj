@@ -168,7 +168,11 @@
               ["/chat/submit" :post (conj common-interceptors `send-message)]})
 
 
-(def keystore (get (System/getenv) "JETTY_KEYSTORE"))
+;; create /etc/profile.d/keystore.sh
+;; insert into file
+;; export KEYSTORE=/path/to/key
+;; export KEYSTORE_PASS=your-keystore-pass
+(def env (System/getenv))
 
 (def service {:env                     :prod
               ::http/routes            routes
@@ -178,10 +182,10 @@
               ::http/port              8080
               ::http/container-options {:h2c? true
                                         :h2?  false
-                                        :ssl? false
-                                        ;:ssl-port 8081
-                                        ;:keystore keystore
-                                        :key-password "p"
+                                        :ssl? true
+                                        :ssl-port 8443
+                                        :keystore (get env "KEYSTORE")
+                                        :key-password (get env "KEYSTORE_PASS")
                                         :security-provider "Conscrypt"}})
 
 ;; This is an adapted service map, that can be started and stopped
