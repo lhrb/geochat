@@ -180,6 +180,14 @@
               ::http/type              :jetty
               ::http/host              "0.0.0.0"
               ::http/port              8080
+
+              ;; Ehm yeah figure out how to configure this correctly
+              ;;
+              ;; all origins are allowed in dev mode
+              ::http/allowed-origins {:creds true :allowed-origins (constantly true)}
+               ;; Content Security Policy (CSP) is mostly turned off in dev mode
+              ::http/secure-headers {:content-security-policy-settings {:object-src "'none'"}}
+
               ::http/container-options {:h2c? true
                                         :h2?  false
                                         :ssl? true
