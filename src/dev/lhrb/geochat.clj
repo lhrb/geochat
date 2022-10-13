@@ -3,17 +3,17 @@
    [io.pedestal.http :as http]
    [io.pedestal.http.route :as route]
    [io.pedestal.http.body-params :as body-params]
-   [io.pedestal.interceptor :as interceptor]
    [io.pedestal.http.ring-middlewares :as middlewares]
    [io.pedestal.log :as log]
-   [ring.util.response :as ring-resp]
    [ring.middleware.session.cookie :as cookie]
    [hiccup2.core :as hiccup]
    [hiccup.page :refer [doctype]]
    [io.pedestal.http.sse :as sse]
    [clojure.pprint :as pprint]
    [clojure.core.async :as async]
-   [clojure.core.async.impl.protocols :as chan])
+   [malli.core :as m]
+   [malli.transform :as mt]
+   [malli.error :as me])
   (:import
    (ch.hsr.geohash GeoHash))
   (:gen-class))
@@ -100,11 +100,53 @@
                             locationReceived = true;
                        })"}
         [:form {:action "/login" :method "post"}
-         [:input {:type "text" :name "name" :placeholder "Enter your name" :required true}] [:br]
+         [:input {:type "text" :name "name" :placeholder "Enter your name"
+                  :required true :maxlength "10"}] [:br]
          [:input {:type "text" :name "longitude" :x-bind:value "longitude"}] [:br]
          [:input {:type "text" :name "latitude" :x-bind:value "latitude"}] [:br]
          [:input {:type "text" :name "accuracy" :x-bind:value "accuracy"}] [:br]
          [:input {:type "submit" :value "Submit" :x-bind:disabled "!locationReceived"}]]]]])})
+
+(def login-schema
+  (m/schema
+   [:map
+    [:name {:min 2 :max 3} string?]
+    [:longitude double?]
+    [:latitude double?]
+    [:accuracy [:and double? [:< 200]]]]))
+
+(def login-parser
+  {:name ::login-parser
+   :enter
+   (fn [ctx]
+     (let [form-params (get-in ctx [:request :form-params])
+           decoded (m/decode [:map
+                              [:name string?]
+                              [:longitude double?]
+                              [:latitude double?]
+                              [:accuracy double?]]
+                             form-params
+                             mt/string-transformer)]
+       (if (m/validate login-schema decoded)
+         (assoc-in ctx [:request :parsed] decoded)
+         (assoc ctx :response {:status 400
+                               :body (str
+                                      (me/humanize
+                                       (m/explain
+                                        login-schema
+                                        decoded)))}))))})
+
+(def t
+  {:name ::tt
+   :enter (fn [ctx]
+            (def c ctx)
+            ctx)
+   :leave (fn [ctx]
+           (def c2 ctx)
+           ctx)})
+
+;; (get-in c [:request :form-params])
+;; ((:enter login-parser) c)
 
 (defn login
   [req]
@@ -115,7 +157,6 @@
    {:status 303
     :headers {"Location" "/chat"}
     :session {::name name ::topic geohash'}}))
-
 
 (def submit-form
   [:form {:hx-post "/chat/submit"}
@@ -162,11 +203,10 @@
                           (middlewares/session {:store (cookie/cookie-store)})])
 
 (def routes #{["/" :get (conj common-interceptors `landing-page)]
-              ["/login" :post (conj common-interceptors `login)]
+              ["/login" :post (conj common-interceptors `login-parser `t `login)]
               ["/chat" :get (conj common-interceptors `chat)]
               ["/chat/subscribe" :get (conj common-interceptors `(sse/start-event-stream subscribe-see))]
               ["/chat/submit" :post (conj common-interceptors `send-message)]})
-
 
 ;; create /etc/profile.d/keystore.sh
 ;; insert into file
@@ -240,7 +280,7 @@
 
 (comment
   (def server (run-dev))
-
+  (http/stop server)
 
   (run-print-channel)
 

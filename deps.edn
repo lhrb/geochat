@@ -8,7 +8,8 @@
         org.slf4j/jcl-over-slf4j {:mvn/version "1.7.35"}
         org.slf4j/log4j-over-slf4j {:mvn/version "1.7.35"}
         hiccup/hiccup {:mvn/version "2.0.0-alpha2"}
-        ch.hsr/geohash {:mvn/version "1.4.0"}}
+        ch.hsr/geohash {:mvn/version "1.4.0"}
+        metosin/malli {:mvn/version "0.8.9"}}
  :aliases
  {:run-m {:main-opts ["-m" "dev.lhrb.geochat"]}
   :run-x {:ns-default dev.lhrb.geochat
