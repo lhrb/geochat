@@ -130,6 +130,7 @@
        (if (m/validate login-schema decoded)
          (assoc-in ctx [:request :parsed] decoded)
          (assoc ctx :response {:status 400
+                               :headers {"Content-Type" "text/plain"}
                                :body (str
                                       (me/humanize
                                        (m/explain
@@ -203,7 +204,7 @@
                           (middlewares/session {:store (cookie/cookie-store)})])
 
 (def routes #{["/" :get (conj common-interceptors `landing-page)]
-              ["/login" :post (conj common-interceptors `login-parser `t `login)]
+              ["/login" :post (conj common-interceptors `login-parser `login)]
               ["/chat" :get (conj common-interceptors `chat)]
               ["/chat/subscribe" :get (conj common-interceptors `(sse/start-event-stream subscribe-see))]
               ["/chat/submit" :post (conj common-interceptors `send-message)]})
