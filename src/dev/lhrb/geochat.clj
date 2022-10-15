@@ -137,23 +137,11 @@
                                         login-schema
                                         decoded)))}))))})
 
-(def t
-  {:name ::tt
-   :enter (fn [ctx]
-            (def c ctx)
-            ctx)
-   :leave (fn [ctx]
-           (def c2 ctx)
-           ctx)})
-
-;; (get-in c [:request :form-params])
-;; ((:enter login-parser) c)
-
 (defn login
   [req]
-  (let [params (:form-params req)
+  (let [params (:parsed req)
         {:keys [name latitude longitude]} params
-        geohash' (geohash (parse-double latitude) (parse-double longitude))]
+        geohash' (geohash latitude longitude)]
     (log/debug "CREATE" (str "new session " {::name name ::topic geohash'}))
    {:status 303
     :headers {"Location" "/chat"}
