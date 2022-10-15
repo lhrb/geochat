@@ -91,17 +91,26 @@
       [:body
        [:div {:class "container"}
         [:h1 "Who are you?"]
-        [:div {:x-data "{ locationReceived : false,
+        [:div {:x-data "{locationReceived : false,
                          longitude : 'longitude',
                          latitude : 'latitude',
-                         accuracy : 'accuracy'}"
-               :x-init "navigator.geolocation.getCurrentPosition((position) => {
-                            console.log(position);
-                            longitude = position.coords.longitude;
-                            latitude = position.coords.latitude;
-                            accuracy = position.coords.accuracy;
-                            locationReceived = true;
-                       })"}
+                         accuracy : 'accuracy',
+                         requestCount : 0,
+                         requestLocation() {
+                           navigator.geolocation.getCurrentPosition((position) => {
+                             console.log(position);
+                             if (position.coords.accuracy > 200 && this.requestCount < 1) {
+                                console.log(\"accuracy too low, request again\");
+                                this.requestCount++;
+                                this.requestLocation();
+                             } else {
+                                 this.longitude = position.coords.longitude;
+                                 this.latitude = position.coords.latitude;
+                                 this.accuracy = position.coords.accuracy;
+                                 this.locationReceived = true;
+                             }
+                           })}}"
+               :x-init "requestLocation()"}
          [:form {:action "/login" :method "post"}
           [:input {:type "text" :name "name" :placeholder "Enter your name"
                    :required true :maxlength "10"}] [:br]
