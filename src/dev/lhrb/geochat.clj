@@ -66,6 +66,8 @@
   [:head
    [:meta {:charset "UTF-8"}]
    [:meta {:name "viewport" :content "width=device-width, initial-scale=1.0"}]
+   [:link {:rel "stylesheet" :href "css/normalize.css"}]
+   [:link {:rel "stylesheet" :href "css/skeleton.css"}]
    [:script {:src "https://unpkg.com/htmx.org@1.8.0"
              :integrity "sha384-cZuAZ+ZbwkNRnrKi05G/fjBX+azI9DNOkNYysZ0I/X5ZFgsmMiBXgDZof30F5ofc"
              :crossorigin "anonymous"}]
@@ -87,25 +89,26 @@
     [:html
      head
       [:body
-       [:h1 "Who are you?"]
-       [:div {:x-data "{ locationReceived : false,
+       [:div {:class "container"}
+        [:h1 "Who are you?"]
+        [:div {:x-data "{ locationReceived : false,
                          longitude : 'longitude',
                          latitude : 'latitude',
                          accuracy : 'accuracy'}"
-              :x-init "navigator.geolocation.getCurrentPosition((position) => {
+               :x-init "navigator.geolocation.getCurrentPosition((position) => {
                             console.log(position);
                             longitude = position.coords.longitude;
                             latitude = position.coords.latitude;
                             accuracy = position.coords.accuracy;
                             locationReceived = true;
                        })"}
-        [:form {:action "/login" :method "post"}
-         [:input {:type "text" :name "name" :placeholder "Enter your name"
-                  :required true :maxlength "10"}] [:br]
-         [:input {:type "text" :name "longitude" :x-bind:value "longitude"}] [:br]
-         [:input {:type "text" :name "latitude" :x-bind:value "latitude"}] [:br]
-         [:input {:type "text" :name "accuracy" :x-bind:value "accuracy"}] [:br]
-         [:input {:type "submit" :value "Submit" :x-bind:disabled "!locationReceived"}]]]]])})
+         [:form {:action "/login" :method "post"}
+          [:input {:type "text" :name "name" :placeholder "Enter your name"
+                   :required true :maxlength "10"}] [:br]
+          [:input {:type "text" :name "longitude" :x-bind:value "longitude"}]
+          [:input {:type "text" :name "latitude" :x-bind:value "latitude"}]
+          [:input {:type "text" :name "accuracy" :x-bind:value "accuracy"}]
+          [:input {:type "submit" :value "Submit" :x-bind:disabled "!locationReceived"}]]]]]])})
 
 (def login-schema
   (m/schema
@@ -163,10 +166,11 @@
      [:html
       head
       [:body
-       [:h1 (str "Hi " name " everything from " topic)]
-       [:div {:hx-ext "sse" :sse-connect "/chat/subscribe" :sse-swap "message"}
-        "> there will be text"]
-       submit-form]])}))
+       [:div {:class "container"}
+        [:h1 (str "Hi " name " everything from " topic)]
+        [:div {:hx-ext "sse" :sse-connect "/chat/subscribe" :sse-swap "message"}
+         "> there will be text"]
+        submit-form]]])}))
 
 (defn send-message
   [request]
