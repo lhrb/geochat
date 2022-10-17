@@ -161,7 +161,7 @@
 
 (def submit-form
   [:form {:hx-post "/chat/submit"}
-   [:input {:name "message" :type "text"}]
+   [:input {:name "message" :type "text" :minlenght "1"}]
    [:button {:type "submit"} "Submit"]])
 
 (defn chat
@@ -175,19 +175,26 @@
      [:html
       head
       [:body
-       [:div {:class "container"}
-        [:h1 (str "Hi " name " everything from " topic)]
-        [:div {:hx-ext "sse" :sse-connect "/chat/subscribe" :sse-swap "message"}
-         "> there will be text"]
-        submit-form]]])}))
+       [:div {:class "box container"}
+        [:div {:class "row header"}
+           [:h1 (str "Hi " name " everything from " topic)]]
+        [:div {:class "row content"}
+         [:div {:hx-ext "sse" :sse-connect "/chat/subscribe" :hx-swap "beforeend" :sse-swap "message"}
+          "> there will be text"]]
+        [:div {:class "row footer"}
+         submit-form]]]])}))
 
 (defn send-message
   [request]
   (let [{:keys [session form-params]} request]
-   (send-with-tags pub-channel
-                   {:msg {:data (:message form-params)
-                          :name "message"}
-                    :tags [(keyword (::topic session))]})
+    (when (not-empty (:message form-params))
+     (send-with-tags pub-channel
+                     {:msg {:data (html
+                                   [:div {:class "row"}
+                                    [:div {:class "four columns"} (::name session)]
+                                    [:div {:class "eight columns"} (:message form-params)]])
+                            :name "message"}
+                      :tags [(keyword (::topic session))]}))
    {:status 200
     :body
     (html submit-form)}))
