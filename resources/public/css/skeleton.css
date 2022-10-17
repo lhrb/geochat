@@ -33,6 +33,7 @@ html, body {
 
 .box .row.footer {
   flex: 0 1 auto;
+  height: auto;
 }
 
 .input-group {
@@ -45,6 +46,16 @@ html, body {
 
 .input-group-text {
   flex: 1 1 auto;
+}
+
+.text-box {
+  margin: 4px;
+  padding: 2px;
+  border-radius: 5px;
+}
+
+.text-box:hover {
+  background-color: #eeeeee;
 }
 
 
@@ -84,7 +95,7 @@ html, body {
 /* For devices larger than 400px */
 @media (min-width: 400px) {
   .container {
-    width: 100%;
+    width: 90%;
     padding: 0; }
 }
 

@@ -15,7 +15,8 @@
    [malli.transform :as mt]
    [malli.error :as me])
   (:import
-   (ch.hsr.geohash GeoHash))
+   (ch.hsr.geohash GeoHash)
+   (java.awt Color))
   (:gen-class))
 
 ;; ----------------------------------------  pub and sub  ----------------------------------------
@@ -78,6 +79,21 @@
   "geohash for an area of roughly 5 square km"
   [^Double latitude ^Double longitude]
   (.toBase32 (GeoHash/withCharacterPrecision latitude longitude 5)))
+
+
+(defn hex-str [^Color color]
+  (format "#%02x%02x%02x" (.getRed color) (.getGreen color) (.getBlue color)))
+
+(defn range-conversion
+  "range between [0.25 0.75]"
+  [h]
+  (* (/ (- h 0.25) (- 359 0.25)) 0.75))
+
+(defn color-hash [s]
+  (let [h (mod (hash s) 359)
+        hue (/ h 359.0)
+        sb (range-conversion h)]
+    (hex-str (Color. (Color/HSBtoRGB hue sb sb)))))
 
 ;; -------------------------------------------  pages  -------------------------------------------
 
@@ -154,10 +170,11 @@
   (let [params (:parsed req)
         {:keys [name latitude longitude]} params
         geohash' (geohash latitude longitude)]
-    (log/debug "CREATE" (str "new session " {::name name ::topic geohash'}))
+    (log/debug "CREATE" (str "new session " {::name name
+                                             ::topic geohash'}))
    {:status 303
     :headers {"Location" "/chat"}
-    :session {::name name ::topic geohash'}}))
+    :session {::name name ::topic geohash' ::color (color-hash name)}}))
 
 (def submit-form
   [:form {:class "input-group" :hx-post "/chat/submit" :hx-swap "outerHTML"}
@@ -190,9 +207,11 @@
     (when (not-empty (:message form-params))
      (send-with-tags pub-channel
                      {:msg {:data (html
-                                   [:div {:class "row"}
-                                    [:div {:class "four columns"} (::name session)]
-                                    [:div {:class "eight columns"} (:message form-params)]])
+                                   [:div {:class "text-box"}
+                                    [:p
+                                     [:span {:style (str "color:" (::color session))}
+                                      (::name session) ": "]
+                                     (:message form-params)]])
                             :name "message"}
                       :tags [(keyword (::topic session))]}))
    {:status 200
@@ -320,4 +339,13 @@
   (let [form (:form-params req)
         {:keys [name longitude latitude accuracy]} form]
     (parse-double longitude))
+
+
+
+  (/ 0  359.0)
+
+  (color-hash "Lukas")
+
+
+
   ,)
