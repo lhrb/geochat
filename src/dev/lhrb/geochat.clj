@@ -160,8 +160,8 @@
     :session {::name name ::topic geohash'}}))
 
 (def submit-form
-  [:form {:hx-post "/chat/submit"}
-   [:input {:name "message" :type "text" :minlenght "1"}]
+  [:form {:class "input-group" :hx-post "/chat/submit" :hx-swap "outerHTML"}
+   [:input {:class "input-group-text" :name "message" :type "text" :minlenght "1"}]
    [:button {:type "submit"} "Submit"]])
 
 (defn chat
