@@ -85,15 +85,15 @@
   (format "#%02x%02x%02x" (.getRed color) (.getGreen color) (.getBlue color)))
 
 (defn range-conversion
-  "range between [0.25 0.75]"
+  "range between [0.5 1.0]"
   [h]
-  (* (/ (- h 0.25) (- 359 0.25)) 0.75))
+  (+ (/ (* (- h 0.5) 0.5) 359) 0.5))
 
 (defn color-hash [s]
   (let [h (mod (hash s) 359)
         hue (/ h 359.0)
         sb (range-conversion h)]
-    (hex-str (Color. (Color/HSBtoRGB hue sb sb)))))
+    (hex-str (Color. (Color/HSBtoRGB hue sb (- 1.0 sb))))))
 
 ;; -------------------------------------------  pages  -------------------------------------------
 
