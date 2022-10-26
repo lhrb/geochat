@@ -80,20 +80,12 @@
   [^Double latitude ^Double longitude]
   (.toBase32 (GeoHash/withCharacterPrecision latitude longitude 5)))
 
-
-(defn hex-str [^Color color]
-  (format "#%02x%02x%02x" (.getRed color) (.getGreen color) (.getBlue color)))
-
-(defn range-conversion
-  "range between [0.5 1.0]"
-  [h]
-  (+ (/ (* (- h 0.5) 0.5) 359) 0.5))
+(def colors ["#ff0000" "#ff8700" "#ffd300" "#deff0a" "#a1ff0a"
+             "#0aff99" "#0aefff" "#147df5" "#580aff" "#be0aff"])
 
 (defn color-hash [s]
-  (let [h (mod (hash s) 359)
-        hue (/ h 359.0)
-        sb (range-conversion h)]
-    (hex-str (Color. (Color/HSBtoRGB hue sb (- 1.0 sb))))))
+  (let [h (mod (hash s) 10)]
+    (get colors h)))
 
 ;; -------------------------------------------  pages  -------------------------------------------
 
@@ -194,10 +186,10 @@
       [:body
        [:div {:class "box container"}
         [:div {:class "row header"}
-           [:h1 (str "Hi " name " everything from " topic)]]
+           [:h2 "Geochat"]]
         [:div {:class "row content"}
          [:div {:hx-ext "sse" :sse-connect "/chat/subscribe" :hx-swap "beforeend" :sse-swap "message"}
-          "> there will be text"]]
+          [:div {:class "text-box"} (str "Hi " name " you subscribed to geohash: " topic)]]]
         [:div {:class "row footer"}
          submit-form]]]])}))
 
@@ -208,10 +200,9 @@
      (send-with-tags pub-channel
                      {:msg {:data (html
                                    [:div {:class "text-box"}
-                                    [:p
-                                     [:span {:style (str "color:" (::color session))}
-                                      (::name session) ": "]
-                                     (:message form-params)]])
+                                    [:span {:style (str "color:" (::color session))}
+                                     (::name session) ": "]
+                                    (:message form-params)])
                             :name "message"}
                       :tags [(keyword (::topic session))]}))
    {:status 200
