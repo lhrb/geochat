@@ -14,7 +14,8 @@
    [malli.core :as m]
    [malli.transform :as mt]
    [malli.error :as me]
-   [clj-http.client :as client])
+   [clj-http.client :as client]
+   [cheshire.core :as json])
   (:import
    (ch.hsr.geohash GeoHash)
    (java.awt Color))
