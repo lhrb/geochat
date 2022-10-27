@@ -13,11 +13,18 @@
    [clojure.core.async :as async]
    [malli.core :as m]
    [malli.transform :as mt]
-   [malli.error :as me])
+   [malli.error :as me]
+   [clj-http.client :as client])
   (:import
    (ch.hsr.geohash GeoHash)
    (java.awt Color))
   (:gen-class))
+
+;; create /etc/profile.d/keystore.sh
+;; insert into file
+;; export KEYSTORE=/path/to/key
+;; export KEYSTORE_PASS=your-keystore-pass
+(def env (System/getenv))
 
 ;; ----------------------------------------  pub and sub  ----------------------------------------
 
@@ -103,37 +110,61 @@
                          longitude : 'longitude',
                          latitude : 'latitude',
                          accuracy : 'accuracy',
+                         showAddressInput : false,
+                         showGeolocation: false,
                          requestCount : 0,
+                         status : 'Requesting geolocation ...',
                          requestLocation() {
                            navigator.geolocation.getCurrentPosition((position) => {
                              console.log(position);
                              if (position.coords.accuracy > 200 && this.requestCount < 1) {
+                                this.status = 'Geolocation accuracy too low, trying again ...';
                                 console.log(\"accuracy too low, request again\");
                                 this.requestCount++;
                                 this.requestLocation();
+                             } else if (position.coords.accuracy > 200) {
+                                this.status = 'Geolocation accuracy too low, enter your address to proceed.';
+                                this.showAddressInput = true;
                              } else {
+                                 this.showGeolocation = true;
                                  this.longitude = position.coords.longitude;
                                  this.latitude = position.coords.latitude;
                                  this.accuracy = position.coords.accuracy;
                                  this.locationReceived = true;
                              }
+                           },
+                           (error) => {
+                             console.log(error);
+                             this.status = 'Geolocation access blocked, enter your address to proceed.';
+                             this.showAddressInput = true;
                            })}}"
                :x-init "requestLocation()"}
          [:form {:action "/login" :method "post"}
           [:input {:type "text" :name "name" :placeholder "Enter your name"
                    :required true :maxlength "10"}] [:br]
-          [:input {:type "text" :name "longitude" :x-bind:value "longitude"}]
-          [:input {:type "text" :name "latitude" :x-bind:value "latitude"}]
-          [:input {:type "text" :name "accuracy" :x-bind:value "accuracy"}]
-          [:input {:type "submit" :value "Submit" :x-bind:disabled "!locationReceived"}]]]]]])})
+
+          [:template {:x-if "showAddressInput"}
+           [:input {:type "text" :name "address" :placeholder "Enter your address"
+                    :required true}]]
+
+          [:template {:x-if "showGeolocation"}
+           [:input {:type "text" :name "longitude" :x-bind:value "longitude" :readonly true}]
+           [:input {:type "text" :name "latitude" :x-bind:value "latitude" :readonly true}]
+           [:input {:type "text" :name "accuracy" :x-bind:value "accuracy" :readonly true}]]
+          [:input {:type "submit" :value "Submit"}]]
+         [:div {:x-text "status"}]]]]])})
 
 (def login-schema
   (m/schema
-   [:map
-    [:name {:min 2 :max 3} string?]
-    [:longitude double?]
-    [:latitude double?]
-    [:accuracy [:and double? [:< 200]]]]))
+   [:or
+    [:map
+     [:name {:min 2 :max 3} string?]
+     [:longitude double?]
+     [:latitude double?]
+     [:accuracy [:and double? [:< 200]]]]
+    [:map
+     [:name {:min 2 :max 3} string?]
+     [:address string?]]]))
 
 (def login-parser
   {:name ::login-parser
@@ -142,6 +173,7 @@
      (let [form-params (get-in ctx [:request :form-params])
            decoded (m/decode [:map
                               [:name string?]
+                              [:address string?]
                               [:longitude double?]
                               [:latitude double?]
                               [:accuracy double?]]
@@ -156,6 +188,33 @@
                                        (m/explain
                                         login-schema
                                         decoded)))}))))})
+
+(defn request-geocode
+  [text api-key]
+  (client/get "https://api.geoapify.com/v1/geocode/search"
+              {:query-params {:text text :apiKey api-key :lang "en" :limit 1}}))
+
+(defn lat-lon-from-address
+  [address api-key]
+  (let [geo-resp (-> (request-geocode address api-key)
+                     (:body)
+                     (json/parse-string true)
+                     (get-in [:features 0 :properties]))]
+    {:latitude (:lat geo-resp)
+     :longitude (:lon geo-resp)}))
+
+(def geo-coding
+  {:name ::geocoding
+   :enter
+   (fn [ctx]
+     (if-let [address (get-in ctx [:request :parsed :address])]
+       (let [lat-lon (lat-lon-from-address address (get env "GEOCODING_API_KEY"))]
+         (if (some nil? (vals lat-lon))
+           (assoc ctx :response {:status 400
+                                 :headers {"Content-Type" "text/plain"}
+                                 :body "Could not geocode given address."})
+           (update-in ctx [:request :parsed] #(merge % lat-lon))))
+       ctx))})
 
 (defn login
   [req]
@@ -222,16 +281,10 @@
                           (middlewares/session {:store (cookie/cookie-store)})])
 
 (def routes #{["/" :get (conj common-interceptors `landing-page)]
-              ["/login" :post (conj common-interceptors `login-parser `login)]
+              ["/login" :post (conj common-interceptors `login-parser `geo-coding `login)]
               ["/chat" :get (conj common-interceptors `chat)]
               ["/chat/subscribe" :get (conj common-interceptors `(sse/start-event-stream subscribe-see))]
               ["/chat/submit" :post (conj common-interceptors `send-message)]})
-
-;; create /etc/profile.d/keystore.sh
-;; insert into file
-;; export KEYSTORE=/path/to/key
-;; export KEYSTORE_PASS=your-keystore-pass
-(def env (System/getenv))
 
 (def service {:env                     :prod
               ::http/routes            routes
@@ -336,7 +389,6 @@
   (/ 0  359.0)
 
   (color-hash "Lukas")
-
 
 
   ,)
