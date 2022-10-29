@@ -8,10 +8,11 @@
       <pattern>%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
     </encoder>
 
+    <file>logs/geochat.log</file>
+
     <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
       <!-- rollover daily -->
-      <file>/var/log/geochat/geochat.log</file>
-      <fileNamePattern>geochat-%d{yyyy-MM-dd}.%i.log</fileNamePattern>
+      <fileNamePattern>logs/geochat-%d{yyyy-MM-dd}.%i.log</fileNamePattern>
       <timeBasedFileNamingAndTriggeringPolicy
           class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">
         <!-- or whenever the file size reaches 64 MB -->
