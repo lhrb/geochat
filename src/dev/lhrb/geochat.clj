@@ -15,10 +15,12 @@
    [malli.transform :as mt]
    [malli.error :as me]
    [clj-http.client :as client]
-   [cheshire.core :as json])
+   [cheshire.core :as json]
+   [clojure.tools.cli :refer [parse-opts]]
+   [clojure.java.io :as io]
+   [clojure.edn :as edn])
   (:import
-   (ch.hsr.geohash GeoHash)
-   (java.awt Color))
+   (ch.hsr.geohash GeoHash))
   (:gen-class))
 
 ;; create /etc/profile.d/keystore.sh
@@ -191,30 +193,33 @@
                                         decoded)))}))))})
 
 (defn request-geocode
-  [text api-key]
+  [api-key text]
   (client/get "https://api.geoapify.com/v1/geocode/search"
               {:query-params {:text text :apiKey api-key :lang "en" :limit 1}}))
 
 (defn lat-lon-from-address
-  [address api-key]
-  (let [geo-resp (-> (request-geocode address api-key)
+  [api-key address]
+  (let [geo-resp (-> (request-geocode api-key address)
                      (:body)
                      (json/parse-string true)
                      (get-in [:features 0 :properties]))]
     {:latitude (:lat geo-resp)
      :longitude (:lon geo-resp)}))
 
-(def geo-coding
+(defn geo-coding
+  [req-lat-lon-from-address]
   {:name ::geocoding
    :enter
    (fn [ctx]
      (if-let [address (get-in ctx [:request :parsed :address])]
-       (let [lat-lon (lat-lon-from-address address (get env "GEOCODING_API_KEY"))]
-         (if (some nil? (vals lat-lon))
-           (assoc ctx :response {:status 400
-                                 :headers {"Content-Type" "text/plain"}
-                                 :body "Could not geocode given address."})
-           (update-in ctx [:request :parsed] #(merge % lat-lon))))
+       (do
+         (log/info "REQUEST" (str "geolocation for " address))
+         (let [lat-lon (req-lat-lon-from-address address)]
+           (if (some nil? (vals lat-lon))
+             (assoc ctx :response {:status 400
+                                   :headers {"Content-Type" "text/plain"}
+                                   :body "Could not geocode given address."})
+             (update-in ctx [:request :parsed] #(merge % lat-lon)))))
        ctx))})
 
 (defn login
@@ -222,7 +227,7 @@
   (let [params (:parsed req)
         {:keys [name latitude longitude]} params
         geohash' (geohash latitude longitude)]
-    (log/debug "CREATE" (str "new session " {::name name
+    (log/info "CREATE" (str "new session " {::name name
                                              ::topic geohash'}))
    {:status 303
     :headers {"Location" "/chat"}
@@ -281,33 +286,37 @@
                           http/html-body
                           (middlewares/session {:store (cookie/cookie-store)})])
 
-(def routes #{["/" :get (conj common-interceptors `landing-page)]
-              ["/login" :post (conj common-interceptors `login-parser `geo-coding `login)]
-              ["/chat" :get (conj common-interceptors `chat)]
-              ["/chat/subscribe" :get (conj common-interceptors `(sse/start-event-stream subscribe-see))]
-              ["/chat/submit" :post (conj common-interceptors `send-message)]})
+(defn routes
+  [req-lat-lon-from-address]
+  #{["/" :get (conj common-interceptors `landing-page)]
+    ["/login" :post (conj common-interceptors `login-parser (geo-coding req-lat-lon-from-address) `login)]
+    ["/chat" :get (conj common-interceptors `chat)]
+    ["/chat/subscribe" :get (conj common-interceptors `(sse/start-event-stream subscribe-see))]
+    ["/chat/submit" :post (conj common-interceptors `send-message)]})
 
-(def service {:env                     :prod
-              ::http/routes            routes
-              ::http/resource-path     "/public"
-              ::http/type              :jetty
-              ::http/host              "0.0.0.0"
-              ::http/port              8080
+(defn service
+  [{:keys [keystore keypass routes]}]
+  {:env                     :prod
+   ::http/routes            routes
+   ::http/resource-path     "/public"
+   ::http/type              :jetty
+   ::http/host              "0.0.0.0"
+   ::http/port              8080
 
-              ;; Ehm yeah figure out how to configure this correctly
-              ;;
-              ;; all origins are allowed in dev mode
-              ::http/allowed-origins {:creds true :allowed-origins (constantly true)}
-               ;; Content Security Policy (CSP) is mostly turned off in dev mode
-              ::http/secure-headers {:content-security-policy-settings {:object-src "'none'"}}
+   ;; Ehm yeah figure out how to configure this correctly
+   ;;
+   ;; all origins are allowed in dev mode
+   ::http/allowed-origins {:creds true :allowed-origins (constantly true)}
+   ;; Content Security Policy (CSP) is mostly turned off in dev mode
+   ::http/secure-headers {:content-security-policy-settings {:object-src "'none'"}}
 
-              ::http/container-options {:h2c? true
-                                        :h2?  false
-                                        :ssl? true
-                                        :ssl-port 8443
-                                        :keystore (get env "KEYSTORE")
-                                        :key-password (get env "KEYSTORE_PASS")
-                                        :security-provider "Conscrypt"}})
+   ::http/container-options {:h2c? true
+                             :h2?  false
+                             :ssl? true
+                             :ssl-port 8443
+                             :keystore keystore
+                             :key-password keypass
+                             :security-provider "Conscrypt"}})
 
 ;; This is an adapted service map, that can be started and stopped
 ;; From the REPL you can call server/start and server/stop on this service
@@ -315,15 +324,18 @@
 
 (defn run-dev
   "The entry-point for 'lein run-dev'"
-  [& args]
+  [args]
   (println "\nCreating your [DEV] http...")
-  (-> service ;; start with production configuration
+  (-> (service args) ;; start with production configuration
       (merge {:env :dev
               ;; do not block thread that starts web server
               ::http/join? false
               ;; Routes can be a function that resolve routes,
               ;;  we can use this to set the routes to be reloadable
-              ::http/routes #(route/expand-routes (deref #'routes))
+              ::http/routes #(route/expand-routes
+                              (routes (partial
+                                       lat-lon-from-address
+                                       (:geocoding-api-key args))))
               ;; all origins are allowed in dev mode
               ::http/allowed-origins {:creds true :allowed-origins (constantly true)}
                ;; Content Security Policy (CSP) is mostly turned off in dev mode
@@ -334,25 +346,38 @@
       http/create-server
       http/start))
 
+(defn attach-routes
+  [{:keys [geocoding-api-key] :as m}]
+  (assoc m :routes (routes (partial lat-lon-from-address geocoding-api-key))))
 
-(defn greet
-  "Callable entry point to the application."
-  [data]
-  (println (str "Hello, " (or (:name data) "World") "!")))
+(def cli-options
+  [["-c" "--config PATH" "Path to the config file. Should point to an .edn file and
+ contain :keystore, :keypass :geocoding-api-key"
+    :validate [#(.exists (io/file %)) ""]]])
 
 (defn -main
   "I don't do a whole lot ... yet."
   [& args]
-    (println "\nCreating Server http")
-  (-> service
-      http/default-interceptors
-      http/dev-interceptors
-      http/create-server
-      http/start))
-
+  (let [opts (parse-opts args cli-options)]
+    (if-let [error (:errors opts)]
+      (println error)
+      (let [config-file (get-in opts [:options :config])
+            config (-> (slurp config-file)
+                       (edn/read-string)
+                       (attach-routes))]
+        (println "\nCreating Server http")
+        (-> (service config)
+            http/default-interceptors
+            http/dev-interceptors
+            http/create-server
+            http/start)))))
 
 (comment
-  (def server (run-dev))
+  (def config-file ".config.edn")
+  (def server (run-dev (->
+                        (slurp config-file)
+                        (edn/read-string)
+                        (attach-routes))))
   (http/stop server)
 
   (run-print-channel)
@@ -373,23 +398,5 @@
                           :data "warum32"}
                     :tags [:a]})
   (close-channels)
-
-
-  (def req {:form-params {:name "a"
-                        :longitude "7.2162363"
-                        :latitude "51.4818445"
-                        :accuracy "5612.0965"
-                        }})
-
-  (let [form (:form-params req)
-        {:keys [name longitude latitude accuracy]} form]
-    (parse-double longitude))
-
-
-
-  (/ 0  359.0)
-
-  (color-hash "Lukas")
-
 
   ,)
