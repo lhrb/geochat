@@ -11,7 +11,8 @@
         ch.hsr/geohash {:mvn/version "1.4.0"}
         metosin/malli {:mvn/version "0.8.9"}
         clj-http/clj-http {:mvn/version "3.12.3"}
-        cheshire/cheshire {:mvn/version "5.11.0"}}
+        cheshire/cheshire {:mvn/version "5.11.0"}
+        org.clojure/tools.cli {:mvn/version "1.0.214"}}
  :aliases
  {:run-m {:main-opts ["-m" "dev.lhrb.geochat"]}
   :run-x {:ns-default dev.lhrb.geochat
