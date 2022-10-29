@@ -107,9 +107,11 @@
     [:html
      head
       [:body
-       [:div {:class "container"}
-        [:h1 "Who are you?"]
-        [:div {:x-data "{locationReceived : false,
+       [:div {:class "header"} [:h4 "Geochat"]]
+       [:div {:class "wrapper"}
+        [:div {:class "login"}
+         [:h3 "Who are you?"]
+         [:div {:x-data "{locationReceived : false,
                          longitude : 'longitude',
                          latitude : 'latitude',
                          accuracy : 'accuracy',
@@ -141,21 +143,22 @@
                              this.status = 'Geolocation access blocked, enter your address to proceed.';
                              this.showAddressInput = true;
                            })}}"
-               :x-init "requestLocation()"}
-         [:form {:action "/login" :method "post"}
-          [:input {:type "text" :name "name" :placeholder "Enter your name"
-                   :required true :maxlength "10"}] [:br]
+                :x-init "requestLocation()"}
+          [:form {:action "/login" :method "post"}
+           [:input {:type "text" :name "name" :placeholder "Enter your name"
+                    :required true :maxlength "10"}] [:br]
 
-          [:template {:x-if "showAddressInput"}
-           [:input {:type "text" :name "address" :placeholder "Enter your address"
-                    :required true}]]
+           [:template {:x-if "showAddressInput"}
+            [:input {:type "text" :name "address" :placeholder "Enter your address"
+                     :required true}] [:br]]
 
-          [:template {:x-if "showGeolocation"}
-           [:input {:type "text" :name "longitude" :x-bind:value "longitude" :readonly true}]
-           [:input {:type "text" :name "latitude" :x-bind:value "latitude" :readonly true}]
-           [:input {:type "text" :name "accuracy" :x-bind:value "accuracy" :readonly true}]]
-          [:input {:type "submit" :value "Submit"}]]
-         [:div {:x-text "status"}]]]]])})
+           [:template {:x-if "showGeolocation"}
+            [:input {:type "text" :name "longitude" :x-bind:value "longitude" :readonly true}]
+            [:input {:type "text" :name "latitude" :x-bind:value "latitude" :readonly true}]
+            [:input {:type "text" :name "accuracy" :x-bind:value "accuracy" :readonly true}]]
+
+           [:input {:type "submit" :value "Submit"}]]
+          [:div {:x-text "status"}]]]]]])})
 
 (def login-schema
   (m/schema
@@ -249,9 +252,8 @@
      [:html
       head
       [:body
+       [:div {:class "header"} [:h4 "Geochat"]]
        [:div {:class "box container"}
-        [:div {:class "row header"}
-           [:h2 "Geochat"]]
         [:div {:class "row content"}
          [:div {:hx-ext "sse" :sse-connect "/chat/subscribe" :hx-swap "beforeend" :sse-swap "message"}
           [:div {:class "text-box"} (str "Hi " name " you subscribed to geohash: " topic)]]]
@@ -399,5 +401,7 @@
                           :data "warum32"}
                     :tags [:a]})
   (close-channels)
+
+  (log/info "dGB" "hallo file1?")
 
   ,)
