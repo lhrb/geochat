@@ -365,6 +365,7 @@
             config (-> (slurp config-file)
                        (edn/read-string)
                        (attach-routes))]
+        (log/info "CONFIG" config)
         (println "\nCreating Server http")
         (-> (service config)
             http/default-interceptors
