@@ -10,7 +10,8 @@
 
     <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
       <!-- rollover daily -->
-      <fileNamePattern>logs/my-sample-%d{yyyy-MM-dd}.%i.log</fileNamePattern>
+      <file>/var/log/geochat/geochat.log</file>
+      <fileNamePattern>geochat-%d{yyyy-MM-dd}.%i.log</fileNamePattern>
       <timeBasedFileNamingAndTriggeringPolicy
           class="ch.qos.logback.core.rolling.SizeAndTimeBasedFNATP">
         <!-- or whenever the file size reaches 64 MB -->
