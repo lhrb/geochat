@@ -23,12 +23,6 @@
    (ch.hsr.geohash GeoHash))
   (:gen-class))
 
-;; create /etc/profile.d/keystore.sh
-;; insert into file
-;; export KEYSTORE=/path/to/key
-;; export KEYSTORE_PASS=your-keystore-pass
-(def env (System/getenv))
-
 ;; ----------------------------------------  pub and sub  ----------------------------------------
 
 (def pub-channel (async/chan 1))
@@ -66,19 +60,25 @@
 
 ;; ------------------------------------------  helpers  ------------------------------------------
 
-(defn html [hiccup]
+(defn html
+  "default html hiccup settings"
+  [hiccup]
   (str (hiccup/html {:mode :html} (doctype :html5) hiccup)))
 
-(defn ping [req]
+(defn ping
+  "dbg request handler"
+  [req]
   {:status 200
    :body (pprint/pprint req)})
 
 (def head
+  ;; default html header
   [:head
    [:meta {:charset "UTF-8"}]
    [:meta {:name "viewport" :content "width=device-width, initial-scale=1.0"}]
-   [:link {:rel "stylesheet" :href "css/normalize.css"}]
-   [:link {:rel "stylesheet" :href "css/skeleton.css"}]
+   ;[:link {:rel "stylesheet" :href "css/normalize.css"}]
+   ;[:link {:rel "stylesheet" :href "css/skeleton.css"}]
+   [:link {:rel "stylesheet" :href "css/output.css"}]
    [:script {:src "https://unpkg.com/htmx.org@1.8.0"
              :integrity "sha384-cZuAZ+ZbwkNRnrKi05G/fjBX+azI9DNOkNYysZ0I/X5ZFgsmMiBXgDZof30F5ofc"
              :crossorigin "anonymous"}]
@@ -99,7 +99,7 @@
 
 ;; -------------------------------------------  pages  -------------------------------------------
 
-(defn landing-page [_]
+(defn landing-page[_]
   {:status 200
    :headers {"Content-Type" "text/html"}
    :body
@@ -107,12 +107,7 @@
     [:html
      head
       [:body
-       [:div {:class "header"} [:h4 "Geochat"]]
-       [:div {:class "wrapper"}
-        [:div {:class "login"}
-         [:h3 "Who are you?"]
-         [:div {:x-data "{
-                         longitude : 'longitude',
+       [:div {:x-data "{ longitude : 'longitude',
                          latitude : 'latitude',
                          accuracy : 'accuracy',
                          showAddressInput : false,
@@ -143,24 +138,71 @@
                              this.status = 'Geolocation access blocked, enter your address to proceed.';
                              this.showAddressInput = true;
                            })}}"
-                :x-init "requestLocation()"}
-          [:form {:action "/login" :method "post"}
-           [:input {:type "text" :name "name" :placeholder "Enter your name"
-                    :required true :maxlength "10"}] [:br]
-
-           [:template {:x-if "showAddressInput"}
+               :x-init "requestLocation()"
+              :class "min-h-screen bg-gray-100 flex flex-col justify-center py-12 px-6 lg:px-8"}
+        [:div {:class "sm:mx-auto sm:w-full sm:max-w-md"}
+         [:img {:class "mx-auto h-12 w-auto", :src "https://tailwindui.com/img/logos/workflow-mark-indigo-600.svg", :alt "Workflow"}]
+         [:h2 {:class "mt-6 text-center text-3xl font-extrabold text-gray-900"} "Join the chat"]
+         [:p {:class "mt-2 text-center text-sm text-gray-600 max-w" :x-text "status"}]]
+        [:div {}
+         [:div {:class "mt-8 sm:mx-auto sm:w-full sm:max-w-md"}
+          [:div {:class "bg-white py-8 px-6 shadow rounded-lg sm:px-10"}
+           [:form {:action "/login" :method "post" :class "mb-0 space-y-6"}
             [:div
-             [:input {:type "text" :name "address" :placeholder "Enter your address"
-                      :required true}]]]
+             [:label {:for "name" :class "block text-sm font-medium text-gray-700"}
+              "Displayname"]
+             [:div {:class "mt-1"}
+              [:input {:type "text" :name "name" :placeholder "Enter your name"
+                       :required true :maxlength "10"
+                       :class "w-full border-gray-300 rounded-lg shadow-sm"}]]]
 
-           [:template {:x-if "showGeolocation"}
-            [:div
-             [:input {:type "text" :name "longitude" :x-bind:value "longitude" :readonly true}]
-             [:input {:type "text" :name "latitude" :x-bind:value "latitude" :readonly true}]
-             [:input {:type "text" :name "accuracy" :x-bind:value "accuracy" :readonly true}]]]
+            ;; geolocation accuracy is too low or access is denied. Show a form
+            ;; where the user can input street, postcode city
+            [:template {:x-if "showAddressInput"}
+             [:div
+              [:div
+               [:label {:for "street" :class "block text-sm font-medium text-gray-700"}
+                "Street and house number"]
+               [:div {:class "mt-1"}
+                [:input {:type "text" :name "street" :placeholder "Enter your street"
+                         :required true
+                         :class "w-full border-gray-300 rounded-lg shadow-sm"}]]]
+              [:div {:class "mt-4 columns-2"}
+               [:div
+                [:label {:for "postcode" :class "block text-sm font-medium text-gray-700"}
+                 "Postcode"]
+                [:div {:class "mt-1"}
+                 [:input {:type "text" :name "postcode" :placeholder "Enter your postcode"
+                          :required true
+                          :class "w-full border-gray-300 rounded-lg shadow-sm"}]]
+                [:div
+                 [:label {:for "city" :class "block text-sm font-medium text-gray-700"}
+                  "City"]
+                 [:div {:class "mt-1"}
+                  [:input {:type "text" :name "city" :placeholder "Enter your city"
+                           :required true
+                           :class "w-full border-gray-300 rounded-lg shadow-sm"}]]]]]]]
 
-           [:input {:type "submit" :value "Submit"}]]
-          [:div {:x-text "status"}]]]]]])})
+            ;; Successfully read out the geolocation. Show lat lon and accuracy in readonly form fields
+            [:template {:x-if "showGeolocation"}
+             [:div
+              [:div {:class "columns-3"}
+               [:input {:type "text" :name "longitude" :x-bind:value "longitude" :readonly true
+                        :class "w-full border-gray-300 rounded-lg shadow-sm"}]
+               [:input {:type "text" :name "latitude" :x-bind:value "latitude" :readonly true
+                        :class "w-full border-gray-300 rounded-lg shadow-sm"}]
+               [:input {:type "text" :name "accuracy" :x-bind:value "accuracy" :readonly true
+                        :class "w-full border-gray-300 rounded-lg shadow-sm"}]]]]
+
+            [:button {:type "submit"
+                      :class "w-full flex justify-center
+                               py-2 px-4
+                               border border-transparent
+                               rounded-md shadow-sm text-sm
+                               font-medium text-white
+                               bg-indigo-600 hover:bg-indigo-700
+                               focus:outline-none focus:ring-2
+                               focus:ring-offset-2 focus:ring-indigo-500"} "Enter"]]]]]]]])})
 
 (def login-schema
   (m/schema
@@ -172,16 +214,21 @@
      [:accuracy [:and double? [:< 200]]]]
     [:map
      [:name {:min 2 :max 3} string?]
-     [:address string?]]]))
+     [:street string?]
+     [:city string?]
+     [:postcode string?]]]))
 
 (def login-parser
+  ;; interceptor which validates the login request
   {:name ::login-parser
    :enter
    (fn [ctx]
      (let [form-params (get-in ctx [:request :form-params])
            decoded (m/decode [:map
                               [:name string?]
-                              [:address string?]
+                              [:street string?]
+                              [:city string?]
+                              [:postcode string?]
                               [:longitude double?]
                               [:latitude double?]
                               [:accuracy double?]]
@@ -198,11 +245,14 @@
                                         decoded)))}))))})
 
 (defn request-geocode
+  "request geocode from geoapify api"
   [api-key text]
   (client/get "https://api.geoapify.com/v1/geocode/search"
               {:query-params {:text text :apiKey api-key :lang "en" :limit 1}}))
 
 (defn lat-lon-from-address
+  "parses the geocoding request and returns a map with the latitude
+  and longitude"
   [api-key address]
   (let [geo-resp (-> (request-geocode api-key address)
                      (:body)
@@ -212,22 +262,29 @@
      :longitude (:lon geo-resp)}))
 
 (defn geo-coding
+  "returns an interceptor which will send an geocoding request
+  if a address was attached to the context map."
   [req-lat-lon-from-address]
   {:name ::geocoding
    :enter
    (fn [ctx]
-     (if-let [address (get-in ctx [:request :parsed :address])]
-       (do
-         (log/info ::request (str "geolocation for " address))
-         (let [lat-lon (req-lat-lon-from-address address)]
-           (if (some nil? (vals lat-lon))
-             (assoc ctx :response {:status 400
-                                   :headers {"Content-Type" "text/plain"}
-                                   :body "Could not geocode given address."})
-             (update-in ctx [:request :parsed] #(merge % lat-lon)))))
-       ctx))})
+     (let [{:keys [street city postcode]} (get-in ctx [:request :parsed])]
+       ;; probably can do better, fold this into the data when validating
+       (if (not-any? nil? [street city postcode])
+         ;; create address and log that we doing a request here
+         (let [address (str street " " postcode " " city)]
+          (log/info ::request (str "geolocation for " address))
+          ;; this does not create the best user experience but will be fine for now.
+          (let [lat-lon (req-lat-lon-from-address address)]
+            (if (some nil? (vals lat-lon))
+              (assoc ctx :response {:status 400
+                                    :headers {"Content-Type" "text/plain"}
+                                    :body "Could not geocode given address."})
+              (update-in ctx [:request :parsed] #(merge % lat-lon)))))
+        ctx)))})
 
 (defn login
+  "creates a session and redirects to the /chat page"
   [req]
   (let [params (:parsed req)
         {:keys [name latitude longitude]} params
