@@ -127,7 +127,7 @@
                                 console.log(\"accuracy too low, request again\");
                                 this.requestCount++;
                                 this.requestLocation();
-                             } else if (position.coords.accuracy > 600) {
+                             } else if (position.coords.accuracy > 200) {
                                 this.status = 'Geolocation accuracy too low, enter your address to proceed.';
                                 this.showAddressInput = true;
                              } else {
