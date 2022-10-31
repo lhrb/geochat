@@ -111,7 +111,7 @@
        [:div {:class "wrapper"}
         [:div {:class "login"}
          [:h3 "Who are you?"]
-         [:div {:x-data "{locationReceived : false,
+         [:div {:x-data "{
                          longitude : 'longitude',
                          latitude : 'latitude',
                          accuracy : 'accuracy',
@@ -127,15 +127,15 @@
                                 console.log(\"accuracy too low, request again\");
                                 this.requestCount++;
                                 this.requestLocation();
-                             } else if (position.coords.accuracy > 200) {
+                             } else if (position.coords.accuracy > 600) {
                                 this.status = 'Geolocation accuracy too low, enter your address to proceed.';
                                 this.showAddressInput = true;
                              } else {
+                                 this.status = 'Geolocation found.'
                                  this.showGeolocation = true;
                                  this.longitude = position.coords.longitude;
                                  this.latitude = position.coords.latitude;
                                  this.accuracy = position.coords.accuracy;
-                                 this.locationReceived = true;
                              }
                            },
                            (error) => {
@@ -149,13 +149,15 @@
                     :required true :maxlength "10"}] [:br]
 
            [:template {:x-if "showAddressInput"}
-            [:input {:type "text" :name "address" :placeholder "Enter your address"
-                     :required true}] [:br]]
+            [:div
+             [:input {:type "text" :name "address" :placeholder "Enter your address"
+                      :required true}]]]
 
            [:template {:x-if "showGeolocation"}
-            [:input {:type "text" :name "longitude" :x-bind:value "longitude" :readonly true}]
-            [:input {:type "text" :name "latitude" :x-bind:value "latitude" :readonly true}]
-            [:input {:type "text" :name "accuracy" :x-bind:value "accuracy" :readonly true}]]
+            [:div
+             [:input {:type "text" :name "longitude" :x-bind:value "longitude" :readonly true}]
+             [:input {:type "text" :name "latitude" :x-bind:value "latitude" :readonly true}]
+             [:input {:type "text" :name "accuracy" :x-bind:value "accuracy" :readonly true}]]]
 
            [:input {:type "submit" :value "Submit"}]]
           [:div {:x-text "status"}]]]]]])})
