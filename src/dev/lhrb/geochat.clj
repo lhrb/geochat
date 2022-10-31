@@ -218,7 +218,7 @@
    (fn [ctx]
      (if-let [address (get-in ctx [:request :parsed :address])]
        (do
-         (log/info "REQUEST" (str "geolocation for " address))
+         (log/info ::request (str "geolocation for " address))
          (let [lat-lon (req-lat-lon-from-address address)]
            (if (some nil? (vals lat-lon))
              (assoc ctx :response {:status 400
@@ -232,7 +232,7 @@
   (let [params (:parsed req)
         {:keys [name latitude longitude]} params
         geohash' (geohash latitude longitude)]
-    (log/info "CREATE" (str "new session " {::name name
+    (log/info ::create (str "new session " {::name name
                                              ::topic geohash'}))
    {:status 303
     :headers {"Location" "/chat"}
@@ -369,7 +369,7 @@
             config (-> (slurp config-file)
                        (edn/read-string)
                        (attach-routes))]
-        (log/info "CONFIG" config)
+        (log/info ::config config)
         (println "\nCreating Server http")
         (-> (service config)
             http/default-interceptors
