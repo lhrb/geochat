@@ -187,12 +187,24 @@
             [:template {:x-if "showGeolocation"}
              [:div
               [:div {:class "columns-3"}
-               [:input {:type "text" :name "longitude" :x-bind:value "longitude" :readonly true
-                        :class "w-full border-gray-300 rounded-lg shadow-sm"}]
-               [:input {:type "text" :name "latitude" :x-bind:value "latitude" :readonly true
-                        :class "w-full border-gray-300 rounded-lg shadow-sm"}]
-               [:input {:type "text" :name "accuracy" :x-bind:value "accuracy" :readonly true
-                        :class "w-full border-gray-300 rounded-lg shadow-sm"}]]]]
+               [:div
+                [:label {:for "longitude" :class "block text-sm font-medium text-gray-700"}
+                 "longitude"]
+                [:div {:class "mt-1"}
+                 [:input {:type "text" :name "longitude" :x-bind:value "longitude" :readonly true
+                          :class "w-full border-gray-300 rounded-lg shadow-sm"}]]]
+               [:div
+                [:label {:for "longitude" :class "block text-sm font-medium text-gray-700"}
+                 "latitude"]
+                [:div {:class "mt-1"}
+                 [:input {:type "text" :name "latitude" :x-bind:value "latitude" :readonly true
+                          :class "w-full border-gray-300 rounded-lg shadow-sm"}]]]
+               [:div
+                [:label {:for "longitude" :class "block text-sm font-medium text-gray-700"}
+                 "accuracy"]
+                [:div {:class "mt-1"}
+                 [:input {:type "text" :name "accuracy" :x-bind:value "accuracy" :readonly true
+                          :class "w-full border-gray-300 rounded-lg shadow-sm"}]]]]]]
 
             [:button {:type "submit"
                       :class "w-full flex justify-center
@@ -296,9 +308,17 @@
     :session {::name name ::topic geohash' ::color (color-hash name)}}))
 
 (def submit-form
-  [:form {:class "input-group" :hx-post "/chat/submit" :hx-swap "outerHTML"}
-   [:input {:class "input-group-text" :name "message" :type "text" :minlenght "1"}]
-   [:button {:type "submit"} "Submit"]])
+  [:form {:class "flex gap-2" :hx-post "/chat/submit" :hx-swap "outerHTML"}
+   [:input {:class "border-gray-300 rounded-lg shadow-sm grow shrink"
+            :name "message" :type "text" :minlenght "1"}]
+   [:button {:type "submit"
+             :class "flex py-2 px-4
+                     border border-transparent
+                     rounded-md shadow-sm text-sm
+                     font-medium text-white
+                     bg-indigo-600 hover:bg-indigo-700
+                     focus:outline-none focus:ring-2
+                     focus:ring-offset-2 focus:ring-indigo-500"} "Submit"]])
 
 (defn chat
   [request]
@@ -311,12 +331,13 @@
      [:html
       head
       [:body
-       [:div {:class "header"} [:h4 "Geochat"]]
-       [:div {:class "box container"}
-        [:div {:class "row content"}
+       [:div {:class "flex max-h-screen min-h-screen flex-col bg-gray-100 py-4 px-2 lg:px-8"}
+        [:div {:class "container mx-auto shrink grow overflow-y-scroll"}
          [:div {:hx-ext "sse" :sse-connect "/chat/subscribe" :hx-swap "beforeend" :sse-swap "message"}
-          [:div {:class "text-box"} (str "Hi " name " you subscribed to geohash: " topic)]]]
-        [:div {:class "row footer"}
+          [:div {:class "bg-white shadow py-3 px-5 mb-1"}
+           (str "Hi " name " you subscribed to geohash: " topic)]]]
+
+        [:div {:class "container mx-auto px-1 py-2"}
          submit-form]]]])}))
 
 (defn send-message
@@ -325,10 +346,11 @@
     (when (not-empty (:message form-params))
      (send-with-tags pub-channel
                      {:msg {:data (html
-                                   [:div {:class "text-box"}
+                                   [:div {:class "bg-white shadow py-3 px-5"}
                                     [:span {:style (str "color:" (::color session))}
-                                     (::name session) ": "]
-                                    (:message form-params)])
+                                     (::name session)]
+                                    [:p {:class "text-gray-700"}
+                                     (:message form-params)]])
                             :name "message"}
                       :tags [(keyword (::topic session))]}))
    {:status 200
